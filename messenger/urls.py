@@ -10,7 +10,8 @@ urlpatterns = [
     path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken')),
     path('users/me/', views.CustomUserViewSet.as_view({'get': 'me'}), name='user-me'),
-
+    path('chat/', include('chat.urls')),
+    
     
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT,})
 ]
