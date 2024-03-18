@@ -17,12 +17,15 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    "daphne",
+    'channels',
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
     'rest_framework.authtoken',
     'djoser',
     'users',
+    'chat',
 ]
 
 MIDDLEWARE = [
@@ -55,6 +58,17 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'messenger.wsgi.application'
+ASGI_APPLICATION = 'messenger.asgi.application'
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
+
 
 
 # Database
@@ -135,10 +149,10 @@ REST_FRAMEWORK = {
     }
 }
 
-DJOSER={
-    'LOGIN_FIELD': 'email',
-    'SERIALIZERS': {
-        'user_create': 'users.serializers.UserRegistrationSerializer',
-    },
-    'USER_ID_FIELD': 'username',  
-}
+# DJOSER={
+#     'LOGIN_FIELD': 'email',
+#     'SERIALIZERS': {
+#         'user_create': 'users.serializers.UserRegistrationSerializer',
+#     },
+#     'USER_ID_FIELD': 'username',  
+# }
