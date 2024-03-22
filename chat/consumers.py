@@ -7,8 +7,9 @@ from djangochannelsrestframework.observer.generics import (ObserverModelInstance
 from djangochannelsrestframework.observer import model_observer
 from .models import Room, Message
 from django.contrib.auth.models import User
+from users.models import CustomUser
 from .serializers import MessageSerializer, RoomSerializer
-from users.serializers import UserInfoSerializer
+from users.serializers import UserSerializer, CustomUserSerializer
 
 
 
@@ -17,11 +18,26 @@ class RoomConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer):
     serializer_class = RoomSerializer
     lookup_field = "pk"
 
+    async def connect(self):
+        await self.channel_layer.group_add("room_list", self.channel_name)
+        await super().connect()
+
     async def disconnect(self, code):
+        await self.channel_layer.group_discard("room_list", self.channel_name)
         if hasattr(self, "room_subscribe"):
             await self.remove_user_from_room(self.room_subscribe)
             await self.notify_users()
         await super().disconnect(code)
+
+    @action()
+    async def users_list(self, **kwargs):
+       users = await self.get_users_list()
+       await self.send_json({'users': users})
+
+    @action()
+    async def rooms_list(self, **kwargs):
+        rooms = await self.get_rooms()
+        await self.send_json({'rooms': rooms})
 
     @action()
     async def join_room(self, pk, **kwargs):
@@ -97,20 +113,32 @@ class RoomConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer):
         await self.send(text_data=json.dumps({'usuarios': event["usuarios"]}))
 
     @database_sync_to_async
+    def get_users_list(self):
+        users = CustomUser.objects.all()
+        serialized_users = CustomUserSerializer(users, many=True)
+        return serialized_users.data
+
+    @database_sync_to_async
+    def get_rooms(self):
+        rooms = Room.objects.all()
+        serialized_rooms = RoomSerializer(rooms, many=True)
+        return serialized_rooms.data
+
+    @database_sync_to_async
     def get_room(self, pk: int) -> Room:
         return Room.objects.get(pk=pk)
 
     @database_sync_to_async
     def current_users(self, room: Room):
-        return [UserInfoSerializer(user).data for user in room.current_users.all()]
+        return [UserSerializer(user).data for user in room.current_users.all()]
 
     @database_sync_to_async
     def remove_user_from_room(self, room):
-        user: User = self.scope["user"]
+        user: CustomUser = self.scope["user"]
         user.current_rooms.remove(room)
 
     @database_sync_to_async
     def add_user_to_room(self, pk):
-        user: User = self.scope["user"]
+        user: CustomUser = self.scope["user"]
         if not user.current_rooms.filter(pk=self.room_subscribe).exists():
             user.current_rooms.add(Room.objects.get(pk=pk))
